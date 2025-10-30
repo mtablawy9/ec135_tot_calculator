@@ -86,15 +86,8 @@
 
     // replicate MATLAB handling: measured TOT = input - 25
     const hasSandFilter = document.getElementById('sandFilter').checked;
-const hasIBF = document.getElementById('ibfFilter').checked;
 
-let TOT_measured = measuredInput;
-
-if (hasSandFilter) {
-  TOT_measured -= 25;
-} else if (hasIBF) {
-  TOT_measured -= 12;
-}
+const TOT_measured = hasSandFilter ? measuredInput - 25 : measuredInput;
 
     const TOT_expected = tot_fn(PA, OAT);
     const delta = TOT_expected - TOT_measured;
@@ -102,9 +95,11 @@ if (hasSandFilter) {
     // show numeric results
     el('results').style.display = 'block';
     el('expectedLine').innerHTML = `<strong>Expected TOT:</strong> ${TOT_expected.toFixed(1)} °C`;
-    let adjText = "(no adjustment)";
-if (hasSandFilter) adjText = "(adjusted -25°C for Sand Filter)";
-else if (hasIBF) adjText = "(adjusted -12°C for IBF)";
+    const adjText = hasSandFilter ? "(adjusted -25°C for Sand Filter)" : "(no adjustment)";
+
+el('measuredLine').innerHTML = `<strong>Measured TOT:</strong> ${TOT_measured.toFixed(1)} °C ${adjText}`;
+
+
     el('measuredLine').innerHTML = `<strong>Measured TOT:</strong> ${TOT_measured.toFixed(1)} °C ${adjText}`;
     el('deltaLine').innerHTML = `<strong>ΔTOT (Expected - Measured):</strong> ${delta.toFixed(1)} °C`;
 
