@@ -34,6 +34,10 @@
   <input type="checkbox" id="sandFilter">
     Sand Filter Installe
     </label>
+    <label>
+  <input type="checkbox" id="IBFFilter">
+    IBF Installe
+    </label>
     <label>Plot chart? (y/n):
       <input id="doplot" type="text" value="y" maxlength="1" style="width:40px"/>
     </label>
@@ -82,7 +86,15 @@
 
     // replicate MATLAB handling: measured TOT = input - 25
     const hasSandFilter = document.getElementById('sandFilter').checked;
-    const TOT_measured = hasSandFilter ? measuredInput - 25 : measuredInput;
+const hasIBF = document.getElementById('ibfFilter').checked;
+
+let TOT_measured = measuredInput;
+
+if (hasSandFilter) {
+  TOT_measured -= 25;
+} else if (hasIBF) {
+  TOT_measured -= 12;
+}
 
     const TOT_expected = tot_fn(PA, OAT);
     const delta = TOT_expected - TOT_measured;
@@ -90,7 +102,9 @@
     // show numeric results
     el('results').style.display = 'block';
     el('expectedLine').innerHTML = `<strong>Expected TOT:</strong> ${TOT_expected.toFixed(1)} °C`;
-    const adjText = hasSandFilter ? "(adjusted -25°C for Sand Filter)" : "(no adjustment)";
+    let adjText = "(no adjustment)";
+if (hasSandFilter) adjText = "(adjusted -25°C for Sand Filter)";
+else if (hasIBF) adjText = "(adjusted -12°C for IBF)";
     el('measuredLine').innerHTML = `<strong>Measured TOT:</strong> ${TOT_measured.toFixed(1)} °C ${adjText}`;
     el('deltaLine').innerHTML = `<strong>ΔTOT (Expected - Measured):</strong> ${delta.toFixed(1)} °C`;
 
