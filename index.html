@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>EC135 PW206B2 Inflight Power Check (Web)</title>
+<title>EC135 PW206B2 Inflight Power Check (with Filters)</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/modern-normalize/1.1.0/modern-normalize.min.css">
 <style>
   body { font-family: Arial, sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; }
@@ -19,25 +19,28 @@
 </head>
 <body>
   <h1>EC135 PW206B2 Inflight Power Check</h1>
+  <p class="note">Measured TOT entry may be adjusted depending on installed filters. (Sand Filter = -25°C, IBF = -12°C). If both are checked, Sand Filter takes priority.</p>
 
   <div>
     <label>Pressure Altitude (ft):
       <input id="pa" type="number" value="0" step="1" />
     </label>
+
     <label>Outside Air Temperature (°C):
       <input id="oat" type="number" value="15" step="0.1" />
     </label>
-    <label>Measured TOT from engine (°C):
+
+    <label>Measured TOT from engine (°C) (input before any adjustment):
       <input id="meas" type="number" value="700" step="0.1" />
     </label>
+
     <label>
-  <input type="checkbox" id="sandFilter">
-    Sand Filter Installe
+      <input type="checkbox" id="sandFilter"> Sand Filter Installed (apply -25°C)
     </label>
     <label>
-  <input type="checkbox" id="IBFFilter">
-    IBF Installe
+      <input type="checkbox" id="ibfFilter"> IBF Installed (apply -12°C)
     </label>
+
     <label>Plot chart? (y/n):
       <input id="doplot" type="text" value="y" maxlength="1" style="width:40px"/>
     </label>
@@ -84,12 +87,12 @@
     const measuredInput = parseFloat(el('meas').value) || 0;
     const doplot = (el('doplot').value || 'n').trim().toLowerCase() === 'y';
 
-    // replicate MATLAB handling: measured TOT = input - 25
-    const hasSandFilter = document.getElementById('sandFilter').checked;
-    const hasIBF = document.getElementById('ibfFilter').checked;
+    // filter checkboxes
+    const hasSandFilter = el('sandFilter').checked;
+    const hasIBF = el('ibfFilter').checked;
 
+    // apply adjustment logic: Sand has priority if both checked
     let TOT_measured = measuredInput;
-
     if (hasSandFilter) {
       TOT_measured -= 25;
     } else if (hasIBF) {
@@ -100,7 +103,6 @@
     const delta = TOT_expected - TOT_measured;
 
     // show numeric results
-
     el('results').style.display = 'block';
     el('expectedLine').innerHTML = `<strong>Expected TOT:</strong> ${TOT_expected.toFixed(1)} °C`;
     const adjText = hasSandFilter ? "(adjusted -25°C for Sand Filter)" :
@@ -176,7 +178,7 @@
     };
 
     Plotly.newPlot('chart', traces, layout, {responsive:true});
-
+    
     // annotate delta between points
     const midY = (TOT_expected + TOT_measured)/2;
     const annotation = {
@@ -212,9 +214,12 @@
     doc.text(`Date: ${date}`, 12, 30);
     doc.text(`Pressure Altitude (ft): ${PA}`, 12, 40);
     doc.text(`OAT (°C): ${OAT}`, 12, 48);
-    doc.text(`Measured TOT (input - 25) (°C): ${TOT_measured.toFixed(1)}`, 12, 56);
-    doc.text(`Expected TOT (°C): ${TOT_expected.toFixed(1)}`, 12, 64);
-    doc.text(`ΔTOT (Expected - Measured) (°C): ${delta.toFixed(1)}`, 12, 72);
+    doc.text(`Measured TOT (input) (°C): ${measuredInput.toFixed(1)}`, 12, 56);
+    const adjText = hasSandFilter ? 'Adjusted -25°C (Sand Filter)' : (hasIBF ? 'Adjusted -12°C (IBF)' : 'No adjustment');
+    doc.text(`Adjustment: ${adjText}`, 12, 64);
+    doc.text(`Measured TOT (after adj) (°C): ${TOT_measured.toFixed(1)}`, 12, 72);
+    doc.text(`Expected TOT (°C): ${TOT_expected.toFixed(1)}`, 12, 80);
+    doc.text(`ΔTOT (Expected - Measured) (°C): ${delta.toFixed(1)}`, 12, 88);
 
     doc.save(`${name}.pdf`);
   }
@@ -224,6 +229,7 @@
   el('downloadPdf').addEventListener('click', downloadPDF);
   el('reset').addEventListener('click', () => {
     el('pa').value = 0; el('oat').value = 15; el('meas').value = 700; el('doplot').value='y';
+    el('sandFilter').checked = false; el('ibfFilter').checked = false;
     el('results').style.display='none'; el('plot').style.display='none'; el('downloadPdf').style.display='none';
     Plotly.purge('chart');
   });
