@@ -41,8 +41,8 @@
       <input type="checkbox" id="ibfFilter"> IBF Installed (apply -12°C)
     </label>
 
-    <label>Plot chart? (y/n):
-      <input id="doplot" type="text" value="y" maxlength="1" style="width:40px"/>
+    <label>Plot chart?
+      <input id="doplot" type="checkbox" checked />
     </label>
 
     <div class="row">
@@ -82,10 +82,15 @@
   }
 
   function calculateAndShow() {
-    const PA = parseFloat(el('pa').value) || 0;
-    const OAT = parseFloat(el('oat').value) || 0;
-    const measuredInput = parseFloat(el('meas').value) || 0;
-    const doplot = (el('doplot').value || 'n').trim().toLowerCase() === 'y';
+    const PA = parseFloat(el('pa').value);
+    const OAT = parseFloat(el('oat').value);
+    const measuredInput = parseFloat(el('meas').value);
+    const doplot = el('doplot').checked;
+
+    // basic validation
+    if (isNaN(PA) || PA < -1000 || PA > 50000) { alert('Enter a valid Pressure Altitude (ft) between -1000 and 50000'); return; }
+    if (isNaN(OAT) || OAT < -80 || OAT > 80) { alert('Enter a valid OAT (°C) between -80 and 80'); return; }
+    if (isNaN(measuredInput) || measuredInput <= 0) { alert('Enter a valid measured TOT (°C)'); return; }
 
     // filter checkboxes
     const hasSandFilter = el('sandFilter').checked;
@@ -123,8 +128,10 @@
   }
 
   function drawPlot(PA_input, OAT_input, TOT_expected, TOT_measured) {
+    const OAT_MIN = Math.min(-50, Math.floor(OAT_input) - 10);
+    const OAT_MAX = Math.max(50, Math.ceil(OAT_input) + 10);
     const OAT_vec = [];
-    for (let v = 0; v <= 50; v += 1) OAT_vec.push(v);
+    for (let v = OAT_MIN; v <= OAT_MAX; v += 1) OAT_vec.push(v);
 
     const PA_list = [0,2000,4000,6000,8000,10000];
 
@@ -162,7 +169,7 @@
 
     // MCP line
     traces.push({
-      x: [Math.min(...OAT_vec), Math.max(...OAT_vec)],
+      x: [OAT_vec[0], OAT_vec[OAT_vec.length-1]],
       y: [MCP_LIMIT, MCP_LIMIT],
       mode: 'lines',
       name: 'MCP Limit (~835 °C)',
@@ -181,8 +188,9 @@
     
     // annotate delta between points
     const midY = (TOT_expected + TOT_measured)/2;
+    const xAnnot = Math.min(Math.max(OAT_input + 1, OAT_vec[0]), OAT_vec[OAT_vec.length-1]);
     const annotation = {
-      x: OAT_input + 1,
+      x: xAnnot,
       y: midY,
       text: `ΔTOT = ${ (TOT_expected - TOT_measured).toFixed(1) } °C`,
       showarrow: false,
@@ -192,13 +200,13 @@
   }
 
   // PDF download
-  function downloadPDF() {
+  async function downloadPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const name = 'EC135_TOT_Report';
-    const PA = parseFloat(el('pa').value) || 0;
-    const OAT = parseFloat(el('oat').value) || 0;
-    const measuredInput = parseFloat(el('meas').value) || 0;
+    const PA = parseFloat(el('pa').value);
+    const OAT = parseFloat(el('oat').value);
+    const measuredInput = parseFloat(el('meas').value);
     const hasSandFilter = el('sandFilter').checked;
     const hasIBF = el('ibfFilter').checked;
     let TOT_measured = measuredInput;
@@ -221,17 +229,28 @@
     doc.text(`Expected TOT (°C): ${TOT_expected.toFixed(1)}`, 12, 80);
     doc.text(`ΔTOT (Expected - Measured) (°C): ${delta.toFixed(1)}`, 12, 88);
 
+    // embed chart if available
+    try {
+      const chartEl = document.getElementById('chart');
+      if (chartEl && chartEl.data && chartEl.data.length > 0) {
+        const imgData = await Plotly.toImage('chart', {format:'png', width:800, height:450});
+        doc.addImage(imgData, 'PNG', 12, 95, 180, 100);
+      }
+    } catch (e) {
+      // ignore chart embed failures
+    }
+
     doc.save(`${name}.pdf`);
   }
 
   // event listeners
   el('calculate').addEventListener('click', calculateAndShow);
-  el('downloadPdf').addEventListener('click', downloadPDF);
+  el('downloadPdf').addEventListener('click', () => { downloadPDF(); });
   el('reset').addEventListener('click', () => {
-    el('pa').value = 0; el('oat').value = 15; el('meas').value = 700; el('doplot').value='y';
+    el('pa').value = 0; el('oat').value = 15; el('meas').value = 700; el('doplot').checked = true;
     el('sandFilter').checked = false; el('ibfFilter').checked = false;
     el('results').style.display='none'; el('plot').style.display='none'; el('downloadPdf').style.display='none';
-    Plotly.purge('chart');
+    try { Plotly.purge('chart'); } catch(e){}
   });
 
 })();
