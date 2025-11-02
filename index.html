@@ -100,12 +100,11 @@
     const delta = TOT_expected - TOT_measured;
 
     // show numeric results
+
     el('results').style.display = 'block';
     el('expectedLine').innerHTML = `<strong>Expected TOT:</strong> ${TOT_expected.toFixed(1)} °C`;
-    let adjText = "(no adjustment)";
-    if (hasSandFilter) adjText = "(adjusted -25°C for Sand Filter)";
-    else if (hasIBF) adjText = "(adjusted -12°C for IBF)";
-    el('measuredLine').innerHTML = `<strong>Measured TOT:</strong> ${TOT_measured.toFixed(1)} °C ${adjText}`;
+    const adjText = hasSandFilter ? "(adjusted -25°C for Sand Filter)" :
+                    (hasIBF ? "(adjusted -12°C for IBF)" : "(no adjustment)");
     el('measuredLine').innerHTML = `<strong>Measured TOT:</strong> ${TOT_measured.toFixed(1)} °C ${adjText}`;
     el('deltaLine').innerHTML = `<strong>ΔTOT (Expected - Measured):</strong> ${delta.toFixed(1)} °C`;
 
@@ -198,7 +197,11 @@
     const PA = parseFloat(el('pa').value) || 0;
     const OAT = parseFloat(el('oat').value) || 0;
     const measuredInput = parseFloat(el('meas').value) || 0;
-    const TOT_measured = measuredInput - 25;
+    const hasSandFilter = el('sandFilter').checked;
+    const hasIBF = el('ibfFilter').checked;
+    let TOT_measured = measuredInput;
+    if (hasSandFilter) TOT_measured -= 25;
+    else if (hasIBF) TOT_measured -= 12;
     const TOT_expected = tot_fn(PA, OAT);
     const delta = TOT_expected - TOT_measured;
     const date = new Date().toLocaleString();
